@@ -1,0 +1,9 @@
+# 后端
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+data/
+logs/
+.venv/

@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./devlinks-frontend
+    container_name: devlinks-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: ./devlinks-backend
+    container_name: devlinks-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///./data/devlinks.db
+      - ADMIN_PASSWORD=your_admin_password
+      - SECRET_KEY=your-secret-key-here
+    restart: unless-stopped
