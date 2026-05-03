@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.link import Link
-from app.schemas.link import LinkCreate, LinkUpdate, LinkResponse
+from app.schemas.link import LinkCreate, LinkUpdate
 from app.core.response import success, error, page as page_response
 from typing import List
 import httpx
@@ -155,7 +155,7 @@ def fetch_link_favicon(link_id: int, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(link)
         return success(data={"favicon": link.favicon}, message="使用默认图标")
-    except Exception as e:
+    except Exception:
         domain = urlparse(link.url).netloc
         link.favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
         db.commit()

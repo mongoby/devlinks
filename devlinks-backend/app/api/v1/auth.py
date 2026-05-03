@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.schemas.auth import LoginRequest, LoginResponse, UserResponse
-from app.services.auth_service import authenticate_user, create_user_token, get_user_by_id
+from fastapi import APIRouter, Depends
+from app.schemas.auth import LoginRequest, UserResponse
+from app.services.auth_service import authenticate_user, create_user_token
 from app.core.response import success, error
 from app.core.dependencies import get_current_user
 

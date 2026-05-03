@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.til import TIL
-from app.schemas.til import TILCreate, TILUpdate, TILResponse, TILLikeResponse
+from app.schemas.til import TILCreate, TILUpdate, TILLikeResponse
 from app.core.response import success, error, page as page_response
 from datetime import datetime, timedelta
 

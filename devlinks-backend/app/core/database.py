@@ -19,5 +19,5 @@ def get_db():
         db.close()
 
 def init_db():
-    from app.models import Category, Link, TIL, MockProject, MockSchema
+    from app.models import Category, Link, TIL, MockProject, MockSchema  # noqa: F401
     Base.metadata.create_all(bind=engine)

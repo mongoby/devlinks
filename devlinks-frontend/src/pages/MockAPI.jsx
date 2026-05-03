@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Card, Button, Table, Tag, message, Modal, Form, Input, Select, Typography, Space, Row, Col, Tabs } from 'antd'
-import { ApiOutlined, PlusOutlined, EditOutlined, DeleteOutlined, CodeOutlined, ThunderboltOutlined, FileTextOutlined, CopyOutlined } from '@ant-design/icons'
+import { ApiOutlined, PlusOutlined, EditOutlined, DeleteOutlined, CodeOutlined, ThunderboltOutlined, FileTextOutlined, CopyOutlined, HistoryOutlined } from '@ant-design/icons'
 import { mockService } from '../services/mock.js'
 import { formatDateTime } from '../utils/date.js'
 
 const { Title, Text } = Typography
 const TextArea = Input.TextArea
+
+function extractArray(obj) {
+  if (!obj) return []
+  if (Array.isArray(obj)) return obj
+  if (typeof obj === 'object') {
+    if (obj.data && Array.isArray(obj.data)) return obj.data
+    if (obj.data && obj.data.items && Array.isArray(obj.data.items)) return obj.data.items
+    if (obj.items && Array.isArray(obj.items)) return obj.items
+  }
+  return []
+}
 
 const MockAPI = () => {
   const [schemas, setSchemas] = useState([])
@@ -13,32 +24,20 @@ const MockAPI = () => {
   const [modalVisible, setModalVisible] = useState(false)
   const [schemaModalVisible, setSchemaModalVisible] = useState(false)
   const [logsModalVisible, setLogsModalVisible] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editingSchema, setEditingSchema] = useState(null)
   const [schemaInput, setSchemaInput] = useState('')
   const [generatedData, setGeneratedData] = useState('')
   const [projects, setProjects] = useState([])
   const [logs, setLogs] = useState([])
   const [logsLoading, setLogsLoading] = useState(false)
+  const [logsSchemaId, setLogsSchemaId] = useState(null)
   const [form] = Form.useForm()
 
   useEffect(() => {
     loadSchemas()
     loadProjects()
   }, [])
-
-  function extractArray(obj) {
-    if (!obj) return []
-    if (Array.isArray(obj)) return obj
-    if (typeof obj === 'object') {
-      // Backend returns {code, message, data: [...]} — data is the array
-      if (obj.data && Array.isArray(obj.data)) return obj.data
-      // Paginated response: {code, message, data: {items, total}}
-      if (obj.data && obj.data.items && Array.isArray(obj.data.items)) return obj.data.items
-      // Legacy: {items, total}
-      if (obj.items && Array.isArray(obj.items)) return obj.items
-    }
-    return []
-  }
 
   const loadSchemas = async () => {
     try {
@@ -58,7 +57,7 @@ const MockAPI = () => {
       const data = await mockService.getProjects()
       setProjects(extractArray(data))
     } catch (error) {
-      console.error('加载项目列表失败', error)
+      message.error('加载项目列表失败')
       setProjects([])
     }
   }
@@ -98,6 +97,7 @@ const MockAPI = () => {
 
   const handleSubmit = async () => {
     try {
+      setSaving(true)
       const values = await form.validateFields()
       const submitData = {
         ...values,
@@ -118,6 +118,8 @@ const MockAPI = () => {
       } else {
         message.error('操作失败')
       }
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -131,11 +133,15 @@ const MockAPI = () => {
     }
   }
 
-  const handleViewLogs = async () => {
+  const handleViewLogs = async (schemaId) => {
     try {
       setLogsLoading(true)
-      const data = await mockService.getLogs()
-      setLogs(Array.isArray(data) ? data : data.data || [])
+      setLogsSchemaId(schemaId || null)
+      const data = await mockService.getLogs(schemaId)
+      // Backend returns: {code, message, data: {items: [...], total: N}}
+      // After axios interceptor: data = {code, message, data: {items, total}}
+      const items = data?.data?.items || data?.items || (Array.isArray(data) ? data : [])
+      setLogs(items)
       setLogsModalVisible(true)
     } catch (error) {
       message.error('加载请求日志失败')
@@ -218,14 +224,53 @@ const MockAPI = () => {
     {
       title: '操作',
       key: 'action',
-      width: 100,
+      width: 140,
       render: (_, record) => (
         <Space size="small">
+          <Button type="link" size="small" icon={<HistoryOutlined />} onClick={() => handleViewLogs(Number(record.id))} />
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(Number(record.id))} />
         </Space>
       ),
     },
+  ]
+
+  const logColumns = [
+    {
+      title: '时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 180,
+      render: (text) => formatDateTime(text)
+    },
+    {
+      title: '方法',
+      dataIndex: 'request_method',
+      key: 'request_method',
+      width: 100,
+      render: (method) => {
+        const color = method === 'GET' ? 'green' : method === 'POST' ? 'blue' : method === 'PUT' ? 'orange' : 'red'
+        return <Tag color={color}>{method}</Tag>
+      }
+    },
+    {
+      title: '路径',
+      dataIndex: 'request_path',
+      key: 'request_path',
+      render: (text) => <Text code>{text}</Text>
+    },
+    {
+      title: '响应数据',
+      dataIndex: 'response_data',
+      key: 'response_data',
+      width: 300,
+      ellipsis: true,
+      render: (text) => {
+        if (!text) return '-'
+        const str = typeof text === 'object' ? JSON.stringify(text) : String(text)
+        return <Text code ellipsis={{ tooltip: str }}>{str.slice(0, 80)}</Text>
+      }
+    }
   ]
 
   return (
@@ -237,7 +282,7 @@ const MockAPI = () => {
             <Text type="secondary">快速创建和管理Mock接口</Text>
           </div>
           <Space>
-            <Button icon={<FileTextOutlined />} onClick={handleViewLogs}>
+            <Button icon={<FileTextOutlined />} onClick={() => handleViewLogs()}>
               请求日志
             </Button>
             <Button icon={<ThunderboltOutlined />} onClick={() => setSchemaModalVisible(true)}>
@@ -256,6 +301,7 @@ const MockAPI = () => {
             loading={loading}
             rowKey="id"
             pagination={{ pageSize: 10 }}
+            locale={{ emptyText: '暂无Mock API，点击上方按钮创建' }}
           />
         </Card>
       </Space>
@@ -264,6 +310,7 @@ const MockAPI = () => {
         title={editingSchema ? '编辑Mock API' : '创建Mock API'}
         open={modalVisible}
         onOk={handleSubmit}
+        confirmLoading={saving}
         onCancel={() => setModalVisible(false)}
         okText="确定"
         cancelText="取消"
@@ -370,7 +417,7 @@ const MockAPI = () => {
         title={
           <Space>
             <FileTextOutlined />
-            <span>请求日志</span>
+            <span>{logsSchemaId ? `请求日志 (Schema #${logsSchemaId})` : '全部请求日志'}</span>
           </Space>
         }
         open={logsModalVisible}
@@ -390,43 +437,7 @@ const MockAPI = () => {
           loading={logsLoading}
           rowKey="id"
           pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条` }}
-          columns={[
-            {
-              title: '时间',
-              dataIndex: 'created_at',
-              key: 'created_at',
-              width: 180,
-              render: (text) => formatDateTime(text)
-            },
-            {
-              title: '方法',
-              dataIndex: 'request_method',
-              key: 'request_method',
-              width: 100,
-              render: (method) => {
-                const color = method === 'GET' ? 'green' : method === 'POST' ? 'blue' : method === 'PUT' ? 'orange' : 'red'
-                return <Tag color={color}>{method}</Tag>
-              }
-            },
-            {
-              title: '路径',
-              dataIndex: 'request_path',
-              key: 'request_path',
-              render: (text) => <Text code>{text}</Text>
-            },
-            {
-              title: '响应数据',
-              dataIndex: 'response_data',
-              key: 'response_data',
-              width: 300,
-              ellipsis: true,
-              render: (text) => {
-                if (!text) return '-'
-                const str = typeof text === 'object' ? JSON.stringify(text) : String(text)
-                return <Text code ellipsis={{ tooltip: str }}>{str.slice(0, 80)}</Text>
-              }
-            }
-          ]}
+          columns={logColumns}
         />
       </Modal>
     </div>

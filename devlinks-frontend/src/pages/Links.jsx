@@ -13,6 +13,8 @@ const Links = () => {
   const [searchText, setSearchText] = useState('')
   const [filterCategory, setFilterCategory] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [categorySaving, setCategorySaving] = useState(false)
   const [editingLink, setEditingLink] = useState(null)
   const [selectedRowKeys, setSelectedRowKeys] = useState([])
   const [categoryDrawerVisible, setCategoryDrawerVisible] = useState(false)
@@ -111,40 +113,16 @@ const Links = () => {
     try {
       const data = await categoryService.getCategories()
       if (Array.isArray(data)) {
-        setCategories(data.length > 0 ? data : [
-          { id: 1, name: '前端开发' },
-          { id: 2, name: '后端开发' },
-          { id: 3, name: '运维部署' },
-          { id: 4, name: '文档参考' },
-          { id: 5, name: '工具资源' }
-        ])
+        setCategories(data)
       } else if (data && typeof data === 'object') {
         const items = data.data || data.categories || data.items || []
-        setCategories(items.length > 0 ? items : [
-          { id: 1, name: '前端开发' },
-          { id: 2, name: '后端开发' },
-          { id: 3, name: '运维部署' },
-          { id: 4, name: '文档参考' },
-          { id: 5, name: '工具资源' }
-        ])
+        setCategories(items)
       } else {
-        setCategories([
-          { id: 1, name: '前端开发' },
-          { id: 2, name: '后端开发' },
-          { id: 3, name: '运维部署' },
-          { id: 4, name: '文档参考' },
-          { id: 5, name: '工具资源' }
-        ])
+        setCategories([])
       }
     } catch (error) {
-      console.error('加载分类失败，使用 Mock 数据', error)
-      setCategories([
-        { id: 1, name: '前端开发' },
-        { id: 2, name: '后端开发' },
-        { id: 3, name: '运维部署' },
-        { id: 4, name: '文档参考' },
-        { id: 5, name: '工具资源' }
-      ])
+      message.error('加载分类失败')
+      setCategories([])
     }
   }
 
@@ -267,6 +245,7 @@ const Links = () => {
 
   const handleCategorySubmit = async () => {
     try {
+      setCategorySaving(true)
       const values = await categoryForm.validateFields()
       if (editingCategory) {
         await categoryService.updateCategory(editingCategory.id.toString(), values)
@@ -279,11 +258,14 @@ const Links = () => {
       loadCategories()
     } catch (error) {
       message.error('操作失败')
+    } finally {
+      setCategorySaving(false)
     }
   }
 
   const handleSubmit = async () => {
     try {
+      setSaving(true)
       const values = await form.validateFields()
       const submitData = {
         ...values,
@@ -300,6 +282,8 @@ const Links = () => {
       loadLinks(pagination.current, pagination.pageSize)
     } catch (error) {
       message.error('操作失败')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -543,6 +527,7 @@ const Links = () => {
         title={editingLink ? '编辑链接' : '添加链接'}
         open={modalVisible}
         onOk={handleSubmit}
+        confirmLoading={saving}
         onCancel={() => setModalVisible(false)}
         okText="确定"
         cancelText="取消"
@@ -640,6 +625,7 @@ const Links = () => {
         title={editingCategory ? '编辑分类' : '新增分类'}
         open={categoryModalVisible}
         onOk={handleCategorySubmit}
+        confirmLoading={categorySaving}
         onCancel={() => setCategoryModalVisible(false)}
         okText="确定"
         cancelText="取消"

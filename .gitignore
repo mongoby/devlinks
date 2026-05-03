@@ -7,3 +7,4 @@ devlinks-backend/venv/
 devlinks-backend/data/
 devlinks-backend/logs/
 .DS_Store
+*.db

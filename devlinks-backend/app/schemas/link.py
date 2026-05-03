@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Optional, List
 
 class LinkBase(BaseModel):
     title: str

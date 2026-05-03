@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.mock import MockProject, MockSchema, MockLog
 from app.schemas.mock import (
-    MockProjectCreate, MockProjectUpdate, MockProjectResponse,
-    MockSchemaCreate, MockSchemaUpdate, MockSchemaResponse
+    MockProjectCreate, MockProjectUpdate,
+    MockSchemaCreate, MockSchemaUpdate
 )
 from app.services.mock_service import generate_mock_data
 from app.core.response import success, error, page as page_response
@@ -100,13 +100,13 @@ def generate_mock(schema: dict):
 @router.get("/logs")
 def get_mock_logs(
     db: Session = Depends(get_db),
-    schema_id: int = Query(None),
+    schema_id: str = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200)
 ):
     query = db.query(MockLog)
-    if schema_id:
-        query = query.filter(MockLog.schema_id == schema_id)
+    if schema_id and schema_id.strip():
+        query = query.filter(MockLog.schema_id == int(schema_id))
     total = query.count()
     items = query.order_by(MockLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return success(data=page_response(items, total, page, page_size))

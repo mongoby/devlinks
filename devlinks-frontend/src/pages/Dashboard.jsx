@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Statistic, Row, Col, Typography, Space } from 'antd'
+import { Card, Statistic, Row, Col, Typography, Space, message } from 'antd'
 import {
   LinkOutlined,
   BookOutlined,
@@ -35,7 +35,7 @@ const Dashboard = () => {
         tilCount: tils?.data?.total || tils?.total || 0
       })
     } catch (error) {
-      console.error('Failed to load stats:', error)
+      message.error('加载统计信息失败')
     } finally {
       setLoading(false)
     }

@@ -16,6 +16,7 @@ const TILPage = () => {
   const [filterArchive, setFilterArchive] = useState('all')
   const [filterProject, setFilterProject] = useState('all')
   const [modalVisible, setModalVisible] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editingTIL, setEditingTIL] = useState(null)
   const [form] = Form.useForm()
   const [pagination, setPagination] = useState({
@@ -151,6 +152,7 @@ const TILPage = () => {
 
   const handleSubmit = async () => {
     try {
+      setSaving(true)
       const values = await form.validateFields()
       const submitData = {
         ...values,
@@ -167,6 +169,8 @@ const TILPage = () => {
       loadTILs(pagination.current, pagination.pageSize)
     } catch (error) {
       message.error('操作失败')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -328,6 +332,7 @@ const TILPage = () => {
         title={editingTIL ? '编辑TIL' : '发布TIL'}
         open={modalVisible}
         onOk={handleSubmit}
+        confirmLoading={saving}
         onCancel={() => setModalVisible(false)}
         okText="确定"
         cancelText="取消"
