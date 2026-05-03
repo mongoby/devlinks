@@ -26,23 +26,25 @@ const MockAPI = () => {
     loadProjects()
   }, [])
 
+  function extractArray(obj) {
+    if (!obj) return []
+    if (Array.isArray(obj)) return obj
+    if (typeof obj === 'object') {
+      // Backend returns {code, message, data: [...]} — data is the array
+      if (obj.data && Array.isArray(obj.data)) return obj.data
+      // Paginated response: {code, message, data: {items, total}}
+      if (obj.data && obj.data.items && Array.isArray(obj.data.items)) return obj.data.items
+      // Legacy: {items, total}
+      if (obj.items && Array.isArray(obj.items)) return obj.items
+    }
+    return []
+  }
+
   const loadSchemas = async () => {
     try {
       setLoading(true)
       const data = await mockService.getSchemas()
-      if (Array.isArray(data)) {
-        setSchemas(data)
-      } else if (data && typeof data === 'object') {
-        if (data.data && typeof data.data === 'object') {
-          setSchemas(data.data.items || data.data.schemas || data.data.data || [])
-        } else if (data.items) {
-          setSchemas(data.items)
-        } else {
-          setSchemas([])
-        }
-      } else {
-        setSchemas([])
-      }
+      setSchemas(extractArray(data))
     } catch (error) {
       message.error('加载Mock API失败')
       setSchemas([])
@@ -54,19 +56,7 @@ const MockAPI = () => {
   const loadProjects = async () => {
     try {
       const data = await mockService.getProjects()
-      if (Array.isArray(data)) {
-        setProjects(data)
-      } else if (data && typeof data === 'object') {
-        if (data.data && typeof data.data === 'object') {
-          setProjects(data.data.items || data.data.projects || data.data.data || [])
-        } else if (data.items) {
-          setProjects(data.items)
-        } else {
-          setProjects([])
-        }
-      } else {
-        setProjects([])
-      }
+      setProjects(extractArray(data))
     } catch (error) {
       console.error('加载项目列表失败', error)
       setProjects([])

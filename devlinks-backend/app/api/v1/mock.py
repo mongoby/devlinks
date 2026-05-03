@@ -100,10 +100,13 @@ def generate_mock(schema: dict):
 @router.get("/logs")
 def get_mock_logs(
     db: Session = Depends(get_db),
+    schema_id: int = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200)
 ):
     query = db.query(MockLog)
+    if schema_id:
+        query = query.filter(MockLog.schema_id == schema_id)
     total = query.count()
     items = query.order_by(MockLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
     return success(data=page_response(items, total, page, page_size))
@@ -116,7 +119,7 @@ def clear_mock_logs(db: Session = Depends(get_db)):
 
 
 @router.api_route("/run/{project_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-def mock_dynamic_endpoint(project_name: str, path: str, request: Request, db: Session = Depends(get_db)):
+async def mock_dynamic_endpoint(project_name: str, path: str, request: Request, db: Session = Depends(get_db)):
     project = db.query(MockProject).filter(MockProject.name == project_name).first()
     if not project:
         return JSONResponse(status_code=404, content=error(code=404, message="项目不存在"))
@@ -131,9 +134,21 @@ def mock_dynamic_endpoint(project_name: str, path: str, request: Request, db: Se
     ).all()
 
     matched_schema = None
+    # Support path parameter matching (e.g., /api/users/{id} matches /api/users/123)
     for schema in schemas:
         schema_path = schema.path.strip("/")
-        if schema_path == normalized_path:
+        schema_parts = schema_path.split("/")
+        actual_parts = normalized_path.split("/")
+        if len(schema_parts) != len(actual_parts):
+            continue
+        match = True
+        for sp, ap in zip(schema_parts, actual_parts):
+            if sp.startswith("{") and sp.endswith("}"):
+                continue  # path parameter matches anything
+            if sp != ap:
+                match = False
+                break
+        if match:
             matched_schema = schema
             break
 
@@ -148,7 +163,7 @@ def mock_dynamic_endpoint(project_name: str, path: str, request: Request, db: Se
 
     # Capture request details
     try:
-        body = request.json()
+        body = await request.json()
     except Exception:
         body = {}
 
